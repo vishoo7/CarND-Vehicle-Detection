@@ -4,15 +4,9 @@
 ---
 
 
-The steps of this project are the following:
+The goals of this project are the following:
 
-* Perform a Histogram of Oriented Gradients (HOG) feature extraction on a labeled training set of images and train a classifier Linear SVM classifier
-* Optionally, you can also apply a color transform and append binned color features, as well as histograms of color, to your HOG feature vector.
-* Note: for those first two steps don't forget to normalize your features and randomize a selection for training and testing.
-* Implement a sliding-window technique and use your trained classifier to search for vehicles in images.
-
-* Estimate a bounding box for vehicles detected.
-
+Broad steps:
 * Load the training images (cars and non-cars)
 * Include functions for spatial binning, color transformation, computing a color histogram, computing HOGs (Histogram of Oriented Gradient)
 * Include functions to extract features from an image using functions from the previous steps
@@ -20,10 +14,12 @@ The steps of this project are the following:
 * Include a function to iterate through windows output from function in previous step and return windows that are properly classified as cars using a Linear SVM classifier
 * Run my pipeline on a video stream (starting with the test_video.mp4 and later implementing on full project_video.mp4) and create a heat map of recurring detections frame by frame to reject outliers and follow detected vehicles.
 
+The Jupyter notebook + code comments do a good job of explaining the individual steps.
+
 
 [//]: # (Image References)
 [image1]: ./examples/car_not_car.png
-[image2]: ./examples/HOG_example.jpg
+[image2]: ./examples/HOG_example.png
 [image3]: ./examples/sliding_windows.jpg
 [image4]: ./examples/sliding_window.png
 [image5]: ./examples/bboxes_and_heat.png
@@ -60,7 +56,8 @@ Here are examples of changing the color space between RGB and YCrCb and the pixe
 
 #### 2. Explain how you settled on your final choice of HOG parameters.
 
-I played around with different HOG channels and color spaces and spatial size until I got a high accuracy.
+I played around with different HOG channels and color spaces and spatial size until I got a high accuracy. In practice you would want to get more exhaustive with the parameters you try.
+
 
 #### 3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
@@ -70,17 +67,29 @@ I trained a linear SVM using LinearSVC imported from sklearn.svm. This is on lin
 
 #### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
-I followed the recommendation that we shouldn't have more than roughly 1000 windows. I discarded the top half (cars won't be found in the sky or in trees). At first I used the sliding window functions provided in the lessons, but then I used a trick for searching different window sizes. Rather than taking a window (i.e. 128 x 128) and downsizing it, it scales the entire image, applies HOG to said image, then subsample the array. The net effect is to sample in different window sizes.
+I followed the recommendation that we shouldn't have thousands of search windows. I discarded the top half (cars won't be found in the sky or in trees) as suggested in the lessons. Additionally, I looked at typical images and determined the sizes we would expect at different locations within the images.
 
-Here's a cool visualization that I grabbed from the readme template!
+At first I used the sliding window functions provided in the lessons, but then I used a trick for searching different window sizes. Rather than taking a window (i.e. 128 x 128) and downsizing it, it scales the entire image, applies HOG to said image, then subsample the array. The net effect is to sample in different window sizes.
+
+Here's a cool visualization that I grabbed from the readme template that illustrates just how many windows can be drawn on a picture. The sizes/locations of windows that can be drawn on an image is infinite!
 
 ![alt text][image3]
 
 #### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
-I cut out the top region from the sliding window search to remove false positives. The stack of binned colors, histogram of colors and 'ALL' HOG feature extraction proved to be a good fit.Here are some example images:
+I cut out the top region from the sliding window search to remove false positives. The stack of binned colors, histogram of colors and 'ALL' HOG feature extraction proved to be a good fit. To improve performance I limited the window search to the locations we would expect to find cars and given appropriately sized windows.
+
+ Here are some example images:
 
 ![alt text][image4]
+
+
+### Here are six example images and their corresponding heatmaps and resultant boxes:
+
+![alt text][image5]
+
+More images can be seen in the jupyter notebook.
+
 ---
 
 ### Video Implementation
@@ -91,19 +100,10 @@ Here's a [link to my video result](./project_video.mp4)
 
 #### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
 
-To first address the false positives problem I looked at the bottom half of the images. Next I constructed a heatmap from labels using the `scipy.ndimage.measurements.label()` function. From this I could threshold for individual images. For video creation I create a heatmap from the 5 most recent frames then do thresholding on that.
+To address the false positives problem I limited my sliding window search to specific regions in the bottom half of the images. Next I constructed a heatmap from labels using the `scipy.ndimage.measurements.label()` function. This allows us to combine overlapping bounding boxes.  For video creation I create a heatmap from the 5 most recent frames then do thresholding on that.
 
-Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
 
-### Here are six example images and their corresponding heatmaps and resultant boxes:
 
-![alt text][image5]
-
-### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
-![alt text][image6]
-
-### Here the resulting bounding boxes are drawn onto the last frame in the series:
-![alt text][image7]
 
 
 
@@ -113,6 +113,8 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Where I spent the most time on the project was refactoring the code to be usable for both generating the video and for testing. Otherwise the project was pretty straightforward given the wealth of information from the lessons.
+Where I spent the most time on the project was refactoring the code from the lessons to be usable for both generating the video and for testing. Reducing the false positives posed a bit tricky. Good configuration for the locations of the sliding windows and their sizes can be helpful, but it's difficult to predict what we'll see in the future without looking at more video. Additionally, the thresholding and the number of frames to threshold over involved a lot of trial and error.
 
-My pipeline may fail with unknown cars. Augmenting the training data by obtaining more cars or by artificial forms of augmentation may help. I also have a sense that more windows may be helpful, but that may depend on the computing power in your self driving car. Finally, I didn't exhaustively try to tweak all of the combinations of parameters. Surely I haven't attained the absolute optimal.
+I have a sense that more windows may be helpful, but the trade off is that more windows searched means more times to process each frame i.e. we may not be able to get real-time vehicle detection even with powerful hardware.
+
+My pipeline may fail with unknown cars. Augmenting the training data by obtaining more cars or by artificial forms of augmentation may help. Finally, I didn't exhaustively try to tweak all of the combinations of classification parameters. Surely I haven't attained the absolute optimal.
